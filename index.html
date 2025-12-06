@@ -15,6 +15,14 @@
     <title>CDS PYQ Quiz Platform</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600&display=swap" rel="stylesheet">
     
+    <script>
+        window.MathJax = {
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
     <style>
         /* --- CSS STYLES --- */
         :root {
@@ -64,7 +72,14 @@
             z-index: 10;
         }
 
-        .logo { font-family: 'Poppins', sans-serif; font-weight: 700; font-size: 1.5rem; }
+        /* Updated Logo Style: Clickable */
+        .logo { 
+            font-family: 'Poppins', sans-serif; 
+            font-weight: 700; 
+            font-size: 1.5rem; 
+            cursor: pointer;
+            user-select: none;
+        }
         .highlight { color: var(--primary); }
 
         .icon-btn {
@@ -102,7 +117,17 @@
         .btn-primary { background: var(--primary); color: white; }
         .btn-primary:hover { background: var(--primary-hover); }
         .btn-secondary { background: var(--secondary); color: white; }
+        
+        /* Outline button for Previous to distinguish it */
+        .btn-outline { 
+            background: transparent; 
+            border: 2px solid var(--secondary); 
+            color: var(--secondary); 
+        }
+        .btn-outline:hover { background: rgba(37, 99, 235, 0.1); }
+
         .btn-back { background: none; border: none; color: var(--text-muted); cursor: pointer; margin-bottom: 1rem; font-size: 0.9rem; }
+        .btn-back:hover { color: var(--primary); }
         .btn-large { width: 100%; margin-top: 1rem; padding: 1rem; }
 
         /* Subtopic Selection */
@@ -131,7 +156,8 @@
         .option-label:hover { border-color: var(--secondary); background: rgba(37, 99, 235, 0.05); }
         .option-label.selected { border-color: var(--secondary); background: rgba(37, 99, 235, 0.1); font-weight: 600; }
 
-        .quiz-footer { display: flex; justify-content: flex-end; }
+        /* Updated Quiz Footer for 3 buttons */
+        .quiz-footer { display: flex; justify-content: space-between; gap: 1rem; }
 
         /* Results */
         .result-card { text-align: center; background: var(--bg-card); padding: 3rem 1rem; border-radius: var(--radius); margin-bottom: 2rem; }
@@ -164,13 +190,15 @@
         @media (max-width: 600px) {
             .checkbox-list { grid-template-columns: 1fr; }
             .header-section h1 { font-size: 1.5rem; }
+            .quiz-footer { flex-direction: column-reverse; } /* Stack buttons on mobile */
+            .btn { width: 100%; }
         }
     </style>
 </head>
 <body>
 
     <header>
-        <div class="logo">CDS <span class="highlight">Master</span></div>
+        <div class="logo" onclick="app.goHome()">CDS <span class="highlight">Master</span></div>
         <button id="theme-toggle" class="icon-btn" aria-label="Toggle Dark Mode">
             <svg id="moon-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
             <svg id="sun-icon" class="hidden" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
@@ -229,6 +257,8 @@
         </div>
 
         <div id="screen-quiz" class="screen hidden">
+            <button class="btn-back" onclick="app.quitQuiz()">← Quit Quiz</button>
+
             <div class="quiz-header">
                 <div class="progress-wrapper">
                     <span id="q-progress">1 / 10</span>
@@ -243,6 +273,8 @@
             </div>
 
             <div class="quiz-footer">
+                <button id="btn-prev" class="btn btn-outline hidden">Previous</button>
+                
                 <button id="btn-next" class="btn btn-primary">Next Question</button>
                 <button id="btn-submit" class="btn btn-secondary hidden">Submit Quiz</button>
             </div>
@@ -275,18 +307,18 @@
     </main>
 
     <script>
-        /**
-         * CDS PYQ Quiz Platform
-         * Single File Version for Sandbox Compatibility
-         * UPDATED: Supports flat JSON structure (Root keys = Subtopics)
-         */
-    
-        const REPO_OWNER = 'deepak-gurjar07';
-        const REPO_NAME = 'cds-quiz';
-        const BRANCH = 'main';
-    
-        // --- CONFIGURATION: STATIC DATA MAP ---
-        const QUIZ_TREE = {
+    /**
+     * CDS PYQ Quiz Platform
+     * Single File Version for Sandbox Compatibility
+     * FEATURES: MathJax, HTML Parsing, Back Button, Home Button, Prev Button
+     */
+
+    const REPO_OWNER = 'deepak-gurjar07';
+    const REPO_NAME = 'cds-quiz';
+    const BRANCH = 'main';
+
+    // --- CONFIGURATION: STATIC DATA MAP ---
+const QUIZ_TREE = {
             "computer_science": ["2025-I"],
             "economics": [
                 "2007-II", "2008-I", "2008-II", "2011-II", "2012-I", "2012-II",
@@ -323,374 +355,405 @@
                 "2019-I", "2019-II", "2020-I", "2020-II", "2025-I"
             ],
             "Mathematics": [
-                "2007-I", "2007-II", "2009-I", "2009-II",
+                "2007-I", "2007-II", "2008-I", "2008-II", "2009-I", "2009-II",
                 "2010-I", "2010-II", "2011-I", "2011-II", "2012-I", "2012-II",
                 "2013-I", "2013-II", "2014-I", "2014-II", "2015-I", "2015-II",
-                "2016-I", "2016-II", "2017-I", "2017-II"
+                "2016-I", "2016-II", "2017-I", "2017-II", "2018-I", "2018-II",
+                "2019-I", "2019-II", "2020-I", "2020-II", "2021-I", "2021-II", "2022-I", "2022-II", "2023-I", "2023-II"
             ]
         };
-    
-        // --- App State ---
-        const appState = {
-            currentScreen: 'screen-subjects',
-            subject: null,
-            year: null,
-            subtopics: [],
-            questions: [],
-            currentQuestionIndex: 0,
-            userAnswers: {},
-            topicMap: null // Changed from 'fullYearData' to 'topicMap' for clarity
-        };
-    
-        // --- DOM Elements ---
-        const screens = {
-            subjects: document.getElementById('screen-subjects'),
-            years: document.getElementById('screen-years'),
-            subtopics: document.getElementById('screen-subtopics'),
-            quiz: document.getElementById('screen-quiz'),
-            result: document.getElementById('screen-result'),
-            loader: document.getElementById('loader'),
-            error: document.getElementById('error-screen')
-        };
-    
-        // --- Navigation Logic ---
-        const app = {
-            showScreen: (screenId) => {
-                Object.values(screens).forEach(s => s.classList.remove('active', 'hidden'));
-                Object.values(screens).forEach(s => {
-                    if (s.id !== screenId) s.classList.add('hidden');
-                });
-                document.getElementById(screenId).classList.add('active');
-                appState.currentScreen = screenId;
-            },
-    
-            showLoader: (msg = "Loading...") => {
-                document.getElementById('loader-text').textContent = msg;
-                Object.values(screens).forEach(s => s.classList.add('hidden'));
-                screens.loader.classList.remove('hidden');
-            },
-    
-            showError: (msg) => {
-                document.getElementById('error-message').textContent = msg;
-                Object.values(screens).forEach(s => s.classList.add('hidden'));
-                screens.error.classList.remove('hidden');
-                screens.error.classList.add('active');
-            },
-    
-            goBack: () => {
-                if (appState.currentScreen === 'screen-years') {
-                    app.showScreen('screen-subjects');
-                } else if (appState.currentScreen === 'screen-subtopics') {
-                    app.showScreen('screen-years');
-                }
-            }
-        };
-    
-        // --- 1. Load Subjects ---
-        function loadSubjects() {
-            console.log("Loading Subjects...");
-            const grid = document.getElementById('subject-grid');
-            grid.innerHTML = '';
-    
-            const subjects = Object.keys(QUIZ_TREE);
-    
-            subjects.forEach(subName => {
-                const displayName = subName
-                    .split('_')
-                    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-                    .join(' ');
-                
-                const btn = document.createElement('div');
-                btn.className = 'card-btn';
-                btn.textContent = displayName;
-                btn.onclick = () => selectSubject(subName); 
-                grid.appendChild(btn);
+    // --- App State ---
+    const appState = {
+        currentScreen: 'screen-subjects',
+        subject: null,
+        year: null,
+        subtopics: [],
+        questions: [],
+        currentQuestionIndex: 0,
+        userAnswers: {},
+        topicMap: null 
+    };
+
+    // --- DOM Elements ---
+    const screens = {
+        subjects: document.getElementById('screen-subjects'),
+        years: document.getElementById('screen-years'),
+        subtopics: document.getElementById('screen-subtopics'),
+        quiz: document.getElementById('screen-quiz'),
+        result: document.getElementById('screen-result'),
+        loader: document.getElementById('loader'),
+        error: document.getElementById('error-screen')
+    };
+
+    // --- Navigation Logic ---
+    const app = {
+        showScreen: (screenId) => {
+            Object.values(screens).forEach(s => s.classList.remove('active', 'hidden'));
+            Object.values(screens).forEach(s => {
+                if (s.id !== screenId) s.classList.add('hidden');
             });
-    
-            app.showScreen('screen-subjects');
-        }
-    
-        // --- 2. Load Years ---
-        function selectSubject(subjectName) {
-            appState.subject = subjectName;
-            localStorage.setItem('lastSubject', subjectName);
-            
-            const title = subjectName.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-            document.getElementById('selected-subject-title').textContent = title;
-    
-            const years = QUIZ_TREE[subjectName] || [];
-            
-            const grid = document.getElementById('year-grid');
-            grid.innerHTML = '';
-    
-            if (years.length === 0) {
-                grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center;">No papers added for this subject yet.</p>';
+            document.getElementById(screenId).classList.add('active');
+            appState.currentScreen = screenId;
+        },
+
+        showLoader: (msg = "Loading...") => {
+            document.getElementById('loader-text').textContent = msg;
+            Object.values(screens).forEach(s => s.classList.add('hidden'));
+            screens.loader.classList.remove('hidden');
+        },
+
+        showError: (msg) => {
+            document.getElementById('error-message').textContent = msg;
+            Object.values(screens).forEach(s => s.classList.add('hidden'));
+            screens.error.classList.remove('hidden');
+            screens.error.classList.add('active');
+        },
+
+        goBack: () => {
+            if (appState.currentScreen === 'screen-years') {
+                app.showScreen('screen-subjects');
+            } else if (appState.currentScreen === 'screen-subtopics') {
                 app.showScreen('screen-years');
-                return;
             }
-    
-            years.forEach(year => {
-                const btn = document.createElement('div');
-                btn.className = 'card-btn';
-                btn.textContent = year;
-                btn.onclick = () => selectYear(subjectName, `${year}.json`); 
-                grid.appendChild(btn);
-            });
-    
-            app.showScreen('screen-years');
-        }
-    
-        // --- 3. Fetch Full JSON & Extract Subtopics (FIXED PARSING) ---
-        async function selectYear(subject, filename) {
-            const rawUrl = `https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${BRANCH}/${subject}/${filename}`;
-            appState.year = filename.replace('.json', '');
-            
-            app.showLoader("Parsing Questions...");
-    
-            try {
-                const res = await fetch(rawUrl);
-                if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-                const json = await res.json();
-    
-                // --- SMART PARSER LOGIC ---
-                // 1. Check if 'subtopics' or 'topics' key exists
-                // 2. If not, assume ROOT KEYS are the topics (Structure you provided)
-                
-                let finalMap = {};
-                
-                if (json.subtopics) {
-                    finalMap = json.subtopics;
-                } else if (json.topics) {
-                    finalMap = json.topics;
-                } else {
-                    // Assume keys are subtopics, but filter out non-array values (metadata)
-                    const keys = Object.keys(json);
-                    keys.forEach(key => {
-                        if (Array.isArray(json[key])) {
-                            finalMap[key] = json[key];
-                        }
-                    });
-                }
-    
-                appState.topicMap = finalMap;
-                const subtopics = Object.keys(finalMap);
-    
-                renderSubtopics(subtopics);
+        },
+
+        // ADDED: Logic to go Home (Subject Selection)
+        goHome: () => {
+            if(confirm("Return to Home? Any current progress will be lost.")) {
+                app.showScreen('screen-subjects');
+                // Reset some state if needed, or just navigation
+            }
+        },
+
+        // ADDED: Logic to Quit Quiz
+        quitQuiz: () => {
+            if(confirm("Are you sure you want to quit the quiz? Your progress will be lost.")) {
                 app.showScreen('screen-subtopics');
-    
-            } catch (err) {
-                console.error(err);
-                app.showError("Error parsing the question file. Check console for details.");
             }
         }
-    
-        // --- Subtopic Rendering ---
-        function renderSubtopics(topicList) {
-            const list = document.getElementById('subtopic-list');
-            list.innerHTML = '';
-    
-            if (topicList.length === 0) {
-                list.innerHTML = '<p>No subtopics found. The file structure might be unrecognized.</p>';
-                return;
-            }
-    
-            topicList.forEach(topic => {
-                // UPDATED ACCESS: Access directly from map
-                const questionsInTopic = appState.topicMap[topic];
-                const qCount = questionsInTopic ? questionsInTopic.length : 0;
-                
-                if (qCount === 0) return;
-    
-                const label = document.createElement('label');
-                label.className = 'checkbox-item';
-                label.innerHTML = `
-                    <input type="checkbox" value="${topic}" checked>
-                    <span>${topic} <small class="text-muted">(${qCount})</small></span>
-                `;
-                list.appendChild(label);
-            });
-    
-            document.getElementById('btn-start-quiz').onclick = generateQuizFromSelection;
-        }
-    
-        // --- Quiz Generation ---
-        function generateQuizFromSelection() {
-            const checkboxes = document.querySelectorAll('#subtopic-list input:checked');
-            const selectedTopics = Array.from(checkboxes).map(cb => cb.value);
-    
-            if (selectedTopics.length === 0) {
-                alert("Please select at least one topic.");
-                return;
-            }
-    
-            let quizQuestions = [];
-            selectedTopics.forEach(topic => {
-                // UPDATED ACCESS: Access directly from map
-                const questions = appState.topicMap[topic];
-                if (questions) {
-                    const taggedQuestions = questions.map(q => ({...q, _topic: topic}));
-                    quizQuestions = [...quizQuestions, ...taggedQuestions];
-                }
-            });
-    
-            startQuizEngine(quizQuestions);
-        }
-    
-        // --- Quiz Engine ---
-        function startQuizEngine(questions) {
-            appState.questions = questions;
-            appState.currentQuestionIndex = 0;
-            appState.userAnswers = {};
+    };
+
+    // --- 1. Load Subjects ---
+    function loadSubjects() {
+        console.log("Loading Subjects...");
+        const grid = document.getElementById('subject-grid');
+        grid.innerHTML = '';
+
+        const subjects = Object.keys(QUIZ_TREE);
+
+        subjects.forEach(subName => {
+            const displayName = subName
+                .split('_')
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                .join(' ');
             
-            app.showScreen('screen-quiz');
-            renderQuestion();
+            const btn = document.createElement('div');
+            btn.className = 'card-btn';
+            btn.textContent = displayName;
+            btn.onclick = () => selectSubject(subName); 
+            grid.appendChild(btn);
+        });
+
+        app.showScreen('screen-subjects');
+    }
+
+    // --- 2. Load Years ---
+    function selectSubject(subjectName) {
+        appState.subject = subjectName;
+        localStorage.setItem('lastSubject', subjectName);
+        
+        const title = subjectName.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+        document.getElementById('selected-subject-title').textContent = title;
+
+        const years = QUIZ_TREE[subjectName] || [];
+        
+        const grid = document.getElementById('year-grid');
+        grid.innerHTML = '';
+
+        if (years.length === 0) {
+            grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center;">No papers added for this subject yet.</p>';
+            app.showScreen('screen-years');
+            return;
         }
-    
-        function renderQuestion() {
-            const qData = appState.questions[appState.currentQuestionIndex];
+
+        years.forEach(year => {
+            const btn = document.createElement('div');
+            btn.className = 'card-btn';
+            btn.textContent = year;
+            btn.onclick = () => selectYear(subjectName, `${year}.json`); 
+            grid.appendChild(btn);
+        });
+
+        app.showScreen('screen-years');
+    }
+
+    // --- 3. Fetch Full JSON & Extract Subtopics ---
+    async function selectYear(subject, filename) {
+        const rawUrl = `https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${BRANCH}/${subject}/${filename}`;
+        appState.year = filename.replace('.json', '');
+        
+        app.showLoader("Parsing Questions...");
+
+        try {
+            const res = await fetch(rawUrl);
+            if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+            const json = await res.json();
+
+            // --- SMART PARSER LOGIC ---
+            let finalMap = {};
             
-            const total = appState.questions.length;
-            const current = appState.currentQuestionIndex + 1;
-            document.getElementById('q-progress').textContent = `${current} / ${total}`;
-            document.getElementById('progress-fill').style.width = `${(current / total) * 100}%`;
-    
-            // Updated Question Text Extraction
-            const qText = qData.question || qData.statement || "Question text missing";
-            document.getElementById('q-text').textContent = `${current}. ${qText}`;
-    
-            const optionsContainer = document.getElementById('q-options');
-            optionsContainer.innerHTML = '';
-    
-            let options = qData.options || qData.choices || [];
-            if (!Array.isArray(options) && typeof options === 'object') {
-                options = Object.values(options);
-            }
-    
-            options.forEach((optText, index) => {
-                const label = document.createElement('label');
-                label.className = 'option-label';
-                const isSelected = appState.userAnswers[appState.currentQuestionIndex] === optText;
-                
-                if (isSelected) label.classList.add('selected');
-    
-                label.innerHTML = `
-                    <input type="radio" name="q-opt" class="hidden" ${isSelected ? 'checked' : ''}>
-                    <span>${optText}</span>
-                `;
-                
-                label.onclick = () => selectOption(optText, index);
-                optionsContainer.appendChild(label);
-            });
-    
-            const btnNext = document.getElementById('btn-next');
-            const btnSubmit = document.getElementById('btn-submit');
-            
-            if (current === total) {
-                btnNext.classList.add('hidden');
-                btnSubmit.classList.remove('hidden');
+            if (json.subtopics) {
+                finalMap = json.subtopics;
+            } else if (json.topics) {
+                finalMap = json.topics;
             } else {
-                btnNext.classList.remove('hidden');
-                btnSubmit.classList.add('hidden');
+                const keys = Object.keys(json);
+                keys.forEach(key => {
+                    if (Array.isArray(json[key])) {
+                        finalMap[key] = json[key];
+                    }
+                });
             }
-    
-            btnNext.onclick = () => {
-                appState.currentQuestionIndex++;
-                renderQuestion();
-            };
-    
-            btnSubmit.onclick = calculateResults;
+
+            appState.topicMap = finalMap;
+            const subtopics = Object.keys(finalMap);
+
+            renderSubtopics(subtopics);
+            app.showScreen('screen-subtopics');
+
+        } catch (err) {
+            console.error(err);
+            app.showError("Error parsing the question file. Check console for details.");
         }
-    
-        function selectOption(optText, index) {
-            appState.userAnswers[appState.currentQuestionIndex] = optText;
-            renderQuestion();
+    }
+
+    // --- Subtopic Rendering ---
+    function renderSubtopics(topicList) {
+        const list = document.getElementById('subtopic-list');
+        list.innerHTML = '';
+
+        if (topicList.length === 0) {
+            list.innerHTML = '<p>No subtopics found. The file structure might be unrecognized.</p>';
+            return;
         }
-    
-        // --- Results ---
-        function calculateResults() {
-            let score = 0;
-            let correctCount = 0;
-            let wrongCount = 0;
-            const total = appState.questions.length;
-    
-            const reviewList = document.getElementById('review-list');
-            reviewList.innerHTML = '';
-    
-            appState.questions.forEach((q, index) => {
-                const userAns = appState.userAnswers[index];
-                const correctAns = q.answer; 
-                
-                const isCorrect = userAns === correctAns;
-                
-                if (isCorrect) {
-                    score++;
-                    correctCount++;
-                } else {
-                    wrongCount++;
-                }
-    
-                const reviewItem = document.createElement('div');
-                reviewItem.className = `review-item ${isCorrect ? 'correct' : 'wrong'}`;
-                reviewItem.innerHTML = `
-                    <p><strong>Q${index + 1}:</strong> ${q.question || q.statement}</p>
-                    <div class="ans-row">
-                        <span class="${isCorrect ? 'text-green' : 'text-red'}">
-                            Your Answer: ${userAns || 'Not Attempted'}
-                        </span>
-                    </div>
-                    ${!isCorrect ? `<div class="ans-row"><span class="text-green">Correct Answer: ${correctAns}</span></div>` : ''}
-                    <div class="ans-row"><small class="text-muted">Topic: ${q._topic}</small></div>
-                    ${q.explanation ? `<div class="ans-row" style="margin-top:0.5rem; font-style:italic; font-size:0.9rem; color:#64748b;">💡 Explanation: ${q.explanation}</div>` : ''}
-                `;
-                reviewList.appendChild(reviewItem);
-            });
-    
-            document.getElementById('score-text').textContent = `${score}/${total}`;
-            document.getElementById('stat-correct').textContent = correctCount;
-            document.getElementById('stat-wrong').textContent = wrongCount;
-    
-            app.showScreen('screen-result');
-        }
-    
-        // --- Theme Management ---
-        function initTheme() {
-            const toggle = document.getElementById('theme-toggle');
-            if (!toggle) return;
-    
-            const savedTheme = localStorage.getItem('theme');
-            const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+        topicList.forEach(topic => {
+            const questionsInTopic = appState.topicMap[topic];
+            const qCount = questionsInTopic ? questionsInTopic.length : 0;
             
-            if (savedTheme === 'dark' || (!savedTheme && systemPrefersDark)) {
+            if (qCount === 0) return;
+
+            const label = document.createElement('label');
+            label.className = 'checkbox-item';
+            label.innerHTML = `
+                <input type="checkbox" value="${topic}" checked>
+                <span>${topic} <small class="text-muted">(${qCount})</small></span>
+            `;
+            list.appendChild(label);
+        });
+
+        document.getElementById('btn-start-quiz').onclick = generateQuizFromSelection;
+    }
+
+    // --- Quiz Generation ---
+    function generateQuizFromSelection() {
+        const checkboxes = document.querySelectorAll('#subtopic-list input:checked');
+        const selectedTopics = Array.from(checkboxes).map(cb => cb.value);
+
+        if (selectedTopics.length === 0) {
+            alert("Please select at least one topic.");
+            return;
+        }
+
+        let quizQuestions = [];
+        selectedTopics.forEach(topic => {
+            const questions = appState.topicMap[topic];
+            if (questions) {
+                const taggedQuestions = questions.map(q => ({...q, _topic: topic}));
+                quizQuestions = [...quizQuestions, ...taggedQuestions];
+            }
+        });
+
+        startQuizEngine(quizQuestions);
+    }
+
+    // --- Quiz Engine ---
+    function startQuizEngine(questions) {
+        appState.questions = questions;
+        appState.currentQuestionIndex = 0;
+        appState.userAnswers = {};
+        
+        app.showScreen('screen-quiz');
+        renderQuestion();
+    }
+
+    function renderQuestion() {
+        const qData = appState.questions[appState.currentQuestionIndex];
+        
+        const total = appState.questions.length;
+        const current = appState.currentQuestionIndex + 1;
+        document.getElementById('q-progress').textContent = `${current} / ${total}`;
+        document.getElementById('progress-fill').style.width = `${(current / total) * 100}%`;
+
+        // Updated Question Text Extraction with innerHTML support for <br>
+        const qText = qData.question || qData.statement || "Question text missing";
+        document.getElementById('q-text').innerHTML = `${current}. ${qText}`;
+
+        const optionsContainer = document.getElementById('q-options');
+        optionsContainer.innerHTML = '';
+
+        let options = qData.options || qData.choices || [];
+        if (!Array.isArray(options) && typeof options === 'object') {
+            options = Object.values(options);
+        }
+
+        options.forEach((optText, index) => {
+            const label = document.createElement('label');
+            label.className = 'option-label';
+            const isSelected = appState.userAnswers[appState.currentQuestionIndex] === optText;
+            
+            if (isSelected) label.classList.add('selected');
+
+            label.innerHTML = `
+                <input type="radio" name="q-opt" class="hidden" ${isSelected ? 'checked' : ''}>
+                <span>${optText}</span>
+            `;
+            
+            label.onclick = () => selectOption(optText, index);
+            optionsContainer.appendChild(label);
+        });
+
+        // BUTTON LOGIC
+        const btnPrev = document.getElementById('btn-prev');
+        const btnNext = document.getElementById('btn-next');
+        const btnSubmit = document.getElementById('btn-submit');
+        
+        // Show/Hide Previous Button
+        if (current === 1) {
+            btnPrev.classList.add('hidden');
+        } else {
+            btnPrev.classList.remove('hidden');
+        }
+
+        // Show/Hide Next/Submit
+        if (current === total) {
+            btnNext.classList.add('hidden');
+            btnSubmit.classList.remove('hidden');
+        } else {
+            btnNext.classList.remove('hidden');
+            btnSubmit.classList.add('hidden');
+        }
+
+        // Event Listeners for Nav
+        btnPrev.onclick = () => {
+            if (appState.currentQuestionIndex > 0) {
+                appState.currentQuestionIndex--;
+                renderQuestion();
+            }
+        };
+
+        btnNext.onclick = () => {
+            appState.currentQuestionIndex++;
+            renderQuestion();
+        };
+
+        btnSubmit.onclick = calculateResults;
+
+        // MathJax Trigger
+        if (window.MathJax) {
+            MathJax.typesetPromise();
+        }
+    }
+
+    function selectOption(optText, index) {
+        appState.userAnswers[appState.currentQuestionIndex] = optText;
+        renderQuestion();
+    }
+
+    // --- Results ---
+    function calculateResults() {
+        let score = 0;
+        let correctCount = 0;
+        let wrongCount = 0;
+        const total = appState.questions.length;
+
+        const reviewList = document.getElementById('review-list');
+        reviewList.innerHTML = '';
+
+        appState.questions.forEach((q, index) => {
+            const userAns = appState.userAnswers[index];
+            const correctAns = q.answer; 
+            
+            const isCorrect = userAns === correctAns;
+            
+            if (isCorrect) {
+                score++;
+                correctCount++;
+            } else {
+                wrongCount++;
+            }
+
+            const reviewItem = document.createElement('div');
+            reviewItem.className = `review-item ${isCorrect ? 'correct' : 'wrong'}`;
+            reviewItem.innerHTML = `
+                <p><strong>Q${index + 1}:</strong> ${q.question || q.statement}</p>
+                <div class="ans-row">
+                    <span class="${isCorrect ? 'text-green' : 'text-red'}">
+                        Your Answer: ${userAns || 'Not Attempted'}
+                    </span>
+                </div>
+                ${!isCorrect ? `<div class="ans-row"><span class="text-green">Correct Answer: ${correctAns}</span></div>` : ''}
+                <div class="ans-row"><small class="text-muted">Topic: ${q._topic}</small></div>
+                ${q.explanation ? `<div class="ans-row" style="margin-top:0.5rem; font-style:italic; font-size:0.9rem; color:#64748b;">💡 Explanation: ${q.explanation}</div>` : ''}
+            `;
+            reviewList.appendChild(reviewItem);
+        });
+
+        document.getElementById('score-text').textContent = `${score}/${total}`;
+        document.getElementById('stat-correct').textContent = correctCount;
+        document.getElementById('stat-wrong').textContent = wrongCount;
+
+        app.showScreen('screen-result');
+
+        if (window.MathJax) {
+            MathJax.typesetPromise([document.getElementById('review-list')]);
+        }
+    }
+
+    // --- Theme Management ---
+    function initTheme() {
+        const toggle = document.getElementById('theme-toggle');
+        if (!toggle) return;
+
+        const savedTheme = localStorage.getItem('theme');
+        const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        
+        if (savedTheme === 'dark' || (!savedTheme && systemPrefersDark)) {
+            document.body.setAttribute('data-theme', 'dark');
+            document.getElementById('sun-icon').classList.remove('hidden');
+            document.getElementById('moon-icon').classList.add('hidden');
+        }
+
+        toggle.onclick = () => {
+            const isDark = document.body.getAttribute('data-theme') === 'dark';
+            if (isDark) {
+                document.body.removeAttribute('data-theme');
+                localStorage.setItem('theme', 'light');
+                document.getElementById('sun-icon').classList.add('hidden');
+                document.getElementById('moon-icon').classList.remove('hidden');
+            } else {
                 document.body.setAttribute('data-theme', 'dark');
+                localStorage.setItem('theme', 'dark');
                 document.getElementById('sun-icon').classList.remove('hidden');
                 document.getElementById('moon-icon').classList.add('hidden');
             }
-    
-            toggle.onclick = () => {
-                const isDark = document.body.getAttribute('data-theme') === 'dark';
-                if (isDark) {
-                    document.body.removeAttribute('data-theme');
-                    localStorage.setItem('theme', 'light');
-                    document.getElementById('sun-icon').classList.add('hidden');
-                    document.getElementById('moon-icon').classList.remove('hidden');
-                } else {
-                    document.body.setAttribute('data-theme', 'dark');
-                    localStorage.setItem('theme', 'dark');
-                    document.getElementById('sun-icon').classList.remove('hidden');
-                    document.getElementById('moon-icon').classList.add('hidden');
-                }
-            };
-        }
-    
-        // --- INITIALIZATION ---
-        initTheme();
-        loadSubjects();
-    
-        </script>
+        };
+    }
+
+    // --- INITIALIZATION ---
+    initTheme();
+    loadSubjects();
+
+    </script>
 </body>
-
 </html>
-
-
-
-
