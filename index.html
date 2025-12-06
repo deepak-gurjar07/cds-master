@@ -298,11 +298,21 @@
                 <button onclick="location.reload()" class="btn btn-primary">Take Another Quiz</button>
             </div>
 
+            <!-- New: Topic-wise Performance Card -->
+            <div class="result-card">
+                <h3>Topic-wise Performance</h3>
+                <p style="margin-top:0.5rem; font-size:0.9rem; color:var(--text-muted);">
+                    Use this to identify your strong and weak areas.
+                </p>
+                <div id="topic-stats" style="margin-top:1rem;"></div>
+            </div>
+
             <div class="review-section">
                 <h3>Review Answers</h3>
-                <div id="review-list">
-                    </div>
+                <div id="review-list"></div>
             </div>
+        </div>
+</div>
         </div>
     </main>
 
@@ -671,6 +681,7 @@ const QUIZ_TREE = {
     }
 
     // --- Results ---
+    
     function calculateResults() {
         let score = 0;
         let correctCount = 0;
@@ -680,17 +691,47 @@ const QUIZ_TREE = {
         const reviewList = document.getElementById('review-list');
         reviewList.innerHTML = '';
 
+        // NEW: topic-wise stats object
+        const topicStats = {};
+        // structure:
+        // {
+        //   "Number System": { total: 5, correct: 3, wrong: 1, unattempted: 1, accuracy: 60, level: "Needs Practice" },
+        //   "Trigonometry": { total: 4, correct: 4, wrong: 0, unattempted: 0, accuracy: 100, level: "Strong" }
+        // }
+
         appState.questions.forEach((q, index) => {
             const userAns = appState.userAnswers[index];
-            const correctAns = q.answer; 
-            
-            const isCorrect = userAns === correctAns;
-            
-            if (isCorrect) {
+            const correctAns = q.answer;
+            const topic = q._topic || 'Misc';
+
+            // Initialize topic entry if not present
+            if (!topicStats[topic]) {
+                topicStats[topic] = {
+                    total: 0,
+                    correct: 0,
+                    wrong: 0,
+                    unattempted: 0,
+                    accuracy: 0,
+                    level: ''
+                };
+            }
+
+            const t = topicStats[topic];
+            t.total += 1;
+
+            const isUnattempted = userAns == null || userAns === '' || userAns === undefined;
+            const isCorrect = !isUnattempted && userAns === correctAns;
+
+            if (isUnattempted) {
+                t.unattempted += 1;
+                // do NOT change score/correctCount/wrongCount
+            } else if (isCorrect) {
                 score++;
                 correctCount++;
+                t.correct += 1;
             } else {
                 wrongCount++;
+                t.wrong += 1;
             }
 
             const reviewItem = document.createElement('div');
@@ -703,15 +744,36 @@ const QUIZ_TREE = {
                     </span>
                 </div>
                 ${!isCorrect ? `<div class="ans-row"><span class="text-green">Correct Answer: ${correctAns}</span></div>` : ''}
-                <div class="ans-row"><small class="text-muted">Topic: ${q._topic}</small></div>
+                <div class="ans-row"><small class="text-muted">Topic: ${topic}</small></div>
                 ${q.explanation ? `<div class="ans-row" style="margin-top:0.5rem; font-style:italic; font-size:0.9rem; color:#64748b;">💡 Explanation: ${q.explanation}</div>` : ''}
             `;
             reviewList.appendChild(reviewItem);
         });
 
+        // Compute accuracy and level for each topic
+        Object.keys(topicStats).forEach(topic => {
+            const t = topicStats[topic];
+
+            t.accuracy = t.total > 0
+                ? Math.round((t.correct / t.total) * 100)
+                : 0;
+
+            if (t.accuracy >= 80) {
+                t.level = 'Strong';
+            } else if (t.accuracy >= 50) {
+                t.level = 'Needs Practice';
+            } else {
+                t.level = 'Weak';
+            }
+        });
+
+        // Overall score UI
         document.getElementById('score-text').textContent = `${score}/${total}`;
         document.getElementById('stat-correct').textContent = correctCount;
         document.getElementById('stat-wrong').textContent = wrongCount;
+
+        // NEW: Render topic-wise strengths & weaknesses
+        renderTopicStats(topicStats);
 
         app.showScreen('screen-result');
 
@@ -720,7 +782,55 @@ const QUIZ_TREE = {
         }
     }
 
-    // --- Theme Management ---
+    function renderTopicStats(topicStats) {
+        const container = document.getElementById('topic-stats');
+        if (!container) return;
+
+        container.innerHTML = '';
+
+        const topics = Object.keys(topicStats);
+        if (topics.length === 0) {
+            container.textContent = 'No topic data available.';
+            return;
+        }
+
+        topics.forEach(topic => {
+            const { total, correct, wrong, unattempted, accuracy, level } = topicStats[topic];
+
+            let levelClass = '';
+            if (level === 'Strong') {
+                levelClass = 'text-green';
+            } else if (level === 'Weak') {
+                levelClass = 'text-red';
+            }
+
+            const row = document.createElement('div');
+            row.style.display = 'flex';
+            row.style.justifyContent = 'space-between';
+            row.style.alignItems = 'center';
+            row.style.padding = '0.5rem 0';
+            row.style.borderBottom = '1px solid var(--border)';
+
+            row.innerHTML = `
+                <div>
+                    <strong>${topic}</strong>
+                    <div style="font-size:0.8rem; color:var(--text-muted);">
+                        ${correct}/${total} correct,
+                        ${wrong} wrong,
+                        ${unattempted} unattempted
+                    </div>
+                </div>
+                <div style="text-align:right;">
+                    <div class="${levelClass}" style="font-weight:600;">${accuracy}%</div>
+                    <div style="font-size:0.8rem; color:var(--text-muted);">${level}</div>
+                </div>
+            `;
+
+            container.appendChild(row);
+        });
+    }
+
+// --- Theme Management ---
     function initTheme() {
         const toggle = document.getElementById('theme-toggle');
         if (!toggle) return;
