@@ -192,6 +192,8 @@ const QUIZ_TREE = {
     "2022-II",
     "2023-I",
     "2023-II",
+    "2024-I",
+    "2024-II",
   ],
 };
 
@@ -872,3 +874,4 @@ function initRouter() {
 initTheme();
 restoreOrBoot();
 initRouter();
+
