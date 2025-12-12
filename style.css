@@ -464,6 +464,37 @@
             color: var(--error);
         }
 
+        .q-images {
+            margin-top: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .q-img {
+            max-width: 100%;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+        }
+
+        .question-image img,
+        .inline-image {
+            max-width: 100%;
+            margin-top: 10px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .explanation-box img {
+            max-width: 100%;
+            margin-top: 6px;
+            border-radius: 6px;
+        }
+
+
+
+
         /* Loader */
         .spinner {
             width: 40px;

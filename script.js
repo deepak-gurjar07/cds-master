@@ -331,7 +331,7 @@ const app = {
       app.showScreen("screen-subjects");
     } else if (appState.currentScreen === "screen-random-config") {
       app.showScreen("screen-subjects"); // ✅ FIX
-    }else if(appState.currentScreen === "screen-random-maths"){
+    } else if (appState.currentScreen === "screen-random-maths") {
       app.showScreen("screen-subjects");
     }
   },
@@ -597,10 +597,9 @@ async function loadRandomMathsTopics() {
       }
 
       // ✅ Collect topics
-      Object.keys(topicMap).forEach(topic => {
+      Object.keys(topicMap).forEach((topic) => {
         topicsSet.add(topic);
       });
-
     } catch (e) {
       console.warn(`Failed to load Maths ${year}`, e);
     }
@@ -615,7 +614,7 @@ async function loadRandomMathsTopics() {
   // ✅ Render sorted topics
   Array.from(topicsSet)
     .sort()
-    .forEach(topic => {
+    .forEach((topic) => {
       const label = document.createElement("label");
       label.className = "checkbox-item";
       label.innerHTML = `
@@ -629,14 +628,13 @@ async function loadRandomMathsTopics() {
   app.showScreen("screen-random-maths");
 }
 
-
 async function buildRandomMathsQuiz() {
   appState.quizMode = "random-maths";
 
   // ✅ Read selected topics
   const selectedTopics = Array.from(
     document.querySelectorAll("#random-maths-topics input:checked")
-  ).map(cb => cb.value);
+  ).map((cb) => cb.value);
 
   if (selectedTopics.length === 0) {
     alert("Select at least one Maths topic");
@@ -705,17 +703,13 @@ async function buildRandomMathsQuiz() {
   allQuestions.sort(() => Math.random() - 0.5);
 
   // ✅ Pick balanced random set (reuse your helper)
-  const finalQuestions = pickRandomQuestions(
-    allQuestions,
-    totalQuestions
-  );
+  const finalQuestions = pickRandomQuestions(allQuestions, totalQuestions);
 
   updateLoaderText("Finalizing your Maths quiz...");
 
   // ✅ Start quiz
   startQuizEngine(finalQuestions);
 }
-
 
 // --- Loader Helpers ---
 function updateLoaderText(msg) {
@@ -821,8 +815,39 @@ function renderQuestion() {
     (current / total) * 100
   }%`;
 
-  const qText = qData.question || qData.statement || "Question text missing";
-  document.getElementById("q-text").innerHTML = `${current}. ${qText}`;
+  // ------- Question Text + Images -------
+  let qText = qData.question || qData.statement || "Question text missing";
+
+  // Normalize image field
+  let imgHTML = "";
+  if (qData.image) {
+    let imgs = [];
+
+    // Accept both string & array
+    if (typeof qData.image === "string" && qData.image.trim() !== "") {
+      imgs = [qData.image];
+    } else if (Array.isArray(qData.image)) {
+      imgs = qData.image.filter((url) => url && url.trim() !== "");
+    }
+
+    // Build HTML if images exist
+    if (imgs.length > 0) {
+      imgHTML =
+        `<div class="q-images">` +
+        imgs
+          .map(
+            (url) =>
+              `<img src="${url}" class="q-img" alt="question image" loading="lazy">`
+          )
+          .join("") +
+        `</div>`;
+    }
+  }
+
+  // Final render
+  document.getElementById("q-text").innerHTML =
+  `${current}. ` + fixImageLinks(qText, qData.image);
+
 
   const optionsContainer = document.getElementById("q-options");
   optionsContainer.innerHTML = "";
@@ -843,7 +868,7 @@ function renderQuestion() {
             <input type="radio" name="q-opt" class="hidden" ${
               isSelected ? "checked" : ""
             }>
-            <span>${optText}</span>
+            <span>${fixImageLinks(optText)}</span>
         `;
     label.onclick = () => selectOption(optText, index);
     optionsContainer.appendChild(label);
@@ -905,6 +930,36 @@ function renderQuestion() {
   saveAppState();
 }
 
+function convertGithubUrl(url) {
+  if (!url) return url;
+
+  return url
+    .replace("github.com", "raw.githubusercontent.com")
+    .replace("/blob/", "/");
+}
+
+
+// --- Convert GitHub blob URLs to raw URLs ---
+// FIX GitHub URLs + insert <img> if question has an "image" field
+function fixImageLinks(text, imgUrl) {
+  if (!imgUrl) return text; // no image -> return original text
+
+  // Convert GitHub URL → raw URL
+  const rawUrl = imgUrl.replace(
+    "github.com",
+    "raw.githubusercontent.com"
+  ).replace("/blob/", "/");
+
+  return `
+    ${text}
+    <br><br>
+    <img src="${rawUrl}" alt="question image" style="max-width:100%; border-radius:8px; margin-top:10px;">
+  `;
+}
+
+
+
+
 function selectOption(optText, index) {
   appState.userAnswers[appState.currentQuestionIndex] = optText;
   renderQuestion();
@@ -963,25 +1018,43 @@ function calculateResults() {
 
     const reviewItem = document.createElement("div");
     reviewItem.className = `review-item ${isCorrect ? "correct" : "wrong"}`;
+
     reviewItem.innerHTML = `
-            <p><strong>Q${index + 1}:</strong> ${q.question || q.statement}</p>
-            <div class="ans-row">
-                <span class="${isCorrect ? "text-green" : "text-red"}">
-                    Your Answer: ${userAns || "Not Attempted"}
-                </span>
-            </div>
-            ${
-              !isCorrect
-                ? `<div class="ans-row"><span class="text-green">Correct Answer: ${correctAns}</span></div>`
-                : ""
-            }
-            <div class="ans-row"><small class="text-muted">Topic: ${topic}</small></div>
-            ${
-              q.explanation
-                ? `<div class="ans-row" style="margin-top:0.5rem; font-style:italic; font-size:0.9rem; color:#64748b;">💡 Explanation: ${q.explanation}</div>`
-                : ""
-            }
-        `;
+  <p><strong>Q${index + 1}:</strong> ${fixImageLinks(
+      q.question || q.statement
+    )}</p>
+  
+  ${
+    q.image
+      ? `<div class="question-image"><img src="${convertGithubUrl(
+          q.image
+        )}" alt="Question Image"></div>`
+      : ""
+  }
+  
+  <div class="ans-row">
+      <span class="${isCorrect ? "text-green" : "text-red"}">
+          Your Answer: ${userAns || "Not Attempted"}
+      </span>
+  </div>
+
+  ${
+    !isCorrect
+      ? `<div class="ans-row"><span class="text-green">Correct Answer: ${correctAns}</span></div>`
+      : ""
+  }
+
+  <div class="ans-row"><small class="text-muted">Topic: ${topic}</small></div>
+
+  ${
+    q.explanation
+      ? `<div class="ans-row explanation-box">💡 Explanation: ${fixImageLinks(
+          q.explanation
+        )}</div>`
+      : ""
+  }
+`;
+
     reviewList.appendChild(reviewItem);
   });
 
@@ -1269,8 +1342,6 @@ function initRandomMathsStart() {
   };
 }
 
-
-
 function initRouter() {
   window.addEventListener("popstate", (event) => {
     const state = event.state;
@@ -1300,4 +1371,3 @@ initRandomGK();
 initRandomQuizButton();
 initRandomMathsButton();
 initRandomMathsStart();
-
